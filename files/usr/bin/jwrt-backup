@@ -1,0 +1,53 @@
+#!/bin/sh
+# 把当前配置备份到数据分区。cron 每 3 天跑一次，刷机前也手动跑一次。
+# 用法：jwrt-backup [目标目录]   默认 /mnt/data/backup
+set -eu
+
+DEST=${1:-/mnt/data/backup}
+KEEP=${JWRT_BACKUP_KEEP:-10}
+
+# 数据分区没挂上就别往 rootfs 里写
+case $DEST in
+/mnt/data/*)
+	grep -q ' /mnt/data ' /proc/mounts || {
+		logger -t jwrt-backup "/mnt/data 未挂载，跳过"
+		echo "/mnt/data 未挂载" >&2
+		exit 1
+	}
+	;;
+esac
+
+umask 077
+dir=$DEST/$(date +%Y%m%d-%H%M)
+mkdir -p "$dir"
+
+sysupgrade -b "$dir/backup.tar.gz"
+
+# 以下只用于对照，不参与恢复
+apk info 2>/dev/null | sort > "$dir/packages.txt" || true
+cp /etc/jwrt-release "$dir/" 2>/dev/null || true
+uci export > "$dir/uci-export.txt" 2>/dev/null || true
+nft list ruleset > "$dir/nft-ruleset.txt" 2>/dev/null || true
+{ ip rule; ip -6 rule; } > "$dir/ip-rule.txt" 2>/dev/null || true
+ip route show table all > "$dir/ip-route.txt" 2>/dev/null || true
+part=$(awk '$2 == "/mnt/data" { print $1 }' /proc/mounts)
+disk=$([ -n "$part" ] && lsblk -no pkname "$part" 2>/dev/null || true)
+if [ -n "$disk" ]; then
+	sfdisk -d "/dev/$disk" > "$dir/sfdisk.txt" 2>/dev/null || true
+	# 恢复脚本也放一份到数据分区：换了镜像、系统起不来时都能拿到
+	cp /usr/bin/jwrt-restore /mnt/data/restore.sh
+	# 刷机后首次启动读取（/etc/uci-defaults/89-jwrt-lan），让新系统直接用回原来的 LAN 地址
+	{
+		echo "LAN_IPADDR=$(uci -q get network.lan.ipaddr | awk '{ print $1 }')"
+		echo "LAN_NETMASK=$(uci -q get network.lan.netmask)"
+		echo "HOSTNAME=$(uci -q get system.@system[0].hostname)"
+	} > /mnt/data/jwrt-lan.conf
+fi
+
+# 只保留最近 $KEEP 份
+ls -1d "$DEST"/[0-9]*-[0-9]* 2>/dev/null | sort -r | tail -n +$((KEEP + 1)) | while read -r old; do
+	rm -rf "$old"
+done
+
+logger -t jwrt-backup "已备份到 $dir"
+echo "$dir"

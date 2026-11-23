@@ -1,0 +1,80 @@
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 发布到 GitHub Releases（否则只上传为 Actions artifact）
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 清理 runner 磁盘
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune -af > /dev/null || true
+          df -h /
+
+      - name: 安装依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            build-essential libncurses-dev zlib1g-dev gawk gettext libssl-dev \
+            xsltproc rsync unzip python3 python3-setuptools file zstd
+
+      - name: 构建
+        run: scripts/build.sh
+
+      - name: 版本号
+        id: meta
+        run: |
+          . ./build.conf
+          tag="$IMMORTALWRT_VERSION-$(date -u +%Y%m%d)-r${GITHUB_RUN_NUMBER}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          {
+            echo "ImmortalWrt $IMMORTALWRT_VERSION，x86/64 UEFI，rootfs ${ROOTFS_PARTSIZE}MB"
+            echo
+            echo "commit: \`$GITHUB_SHA\`"
+            echo
+            echo '**升级**：先 `jwrt-backup`，再 LuCI 上传 `*-squashfs-combined-efi.img.gz`，**不勾**保留配置（或 `sysupgrade -n`）；重启后 `jwrt-restore`。'
+            echo
+            echo '三方包：'
+            echo '```'
+            grep -vE '^\s*(#|$)' third-party.txt | awk '{ print $1, $2, $3 }'
+            echo '```'
+          } > build/notes.md
+
+      - name: 发布 Release
+        if: inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.meta.outputs.tag }}" \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.meta.outputs.tag }}" \
+            --notes-file build/notes.md \
+            build/out/*.img.gz build/out/*.manifest build/out/sha256sums.txt \
+            build/out/jwrt-release.txt build/out/third-party.txt
+
+      - name: 上传 artifact
+        if: ${{ !inputs.release }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.meta.outputs.tag }}
+          path: build/out/
+          compression-level: 0
+          retention-days: 7

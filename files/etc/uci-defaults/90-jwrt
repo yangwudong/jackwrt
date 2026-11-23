@@ -1,0 +1,25 @@
+#!/bin/sh
+# 首次启动（以及每次干净刷机后）执行一次。
+# 恢复备份时 /etc/config/* 会被备份里的版本覆盖，所以这里只写缺省值。
+
+# 数据分区：按卷标 data 挂到 /mnt/data（没有这个分区时 block 会跳过）
+if ! uci show fstab 2>/dev/null | grep -q "\.label='data'"; then
+	uci -q batch <<-EOF
+		add fstab mount
+		set fstab.@mount[-1].target='/mnt/data'
+		set fstab.@mount[-1].label='data'
+		set fstab.@mount[-1].enabled='1'
+		commit fstab
+	EOF
+fi
+
+# 每 3 天 04:00 自动备份
+touch /etc/crontabs/root
+grep -q '/usr/bin/jwrt-backup' /etc/crontabs/root ||
+	echo '0 4 */3 * * /usr/bin/jwrt-backup' >> /etc/crontabs/root
+
+uci -q get system.@imm_init[0] > /dev/null || uci -q add system imm_init > /dev/null
+uci -q set system.@imm_init[0].jwrt='1'
+uci commit system
+
+exit 0

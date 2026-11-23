@@ -1,0 +1,14 @@
+# 三方包：直接下载作者 GitHub Release 的产物，按 sha256 校验后放进 ImageBuilder 的 packages/。
+# 格式：<owner/repo> <tag> <asset> <sha256>
+# asset 为 .apk 时直接使用；为 .tar.gz 时取出其中所有 .apk。
+# 升级：改 tag/asset，并用 `gh release view <tag> -R <repo> --json assets` 里的 digest 更新 sha256。
+
+anothaDev/luci-theme-vantage v1.1.1 luci-theme-vantage-1.1.1-r1.apk 41aa9bc046fefd47125d82adf56caad464ab1af41ef5d143be6ba8fafa80bd70
+anothaDev/luci-theme-vantage v1.1.1 luci-i18n-vantage-theme-zh-cn-1.1.1-r1.apk d5c7dfc160d8097f90bc0cc0566ab3d27b6f66313159b9446129bc53d97b2bc4
+anothaDev/luci-theme-vantage v1.1.1 luci-app-vantage-1.1.1-r1.apk c77136696b87a4f97c7dc55aeb0fee14c3de1815c120a69d67a124be7a22d4df
+anothaDev/luci-theme-vantage v1.1.1 luci-i18n-vantage-zh-cn-1.1.1-r1.apk 3a803dd6bcd0ba57b2c85593201f4022f8b19e4441d49ad981908895f9811c28
+
+sirpdboy/luci-app-advancedplus v1.8.7 luci-app-advancedplus-1.8.7-r20251116.apk 23a22f421e3f36a8278286044ec6ca5d44a7a42620a095d9c0e6081e8b13f7a3
+sirpdboy/luci-app-advancedplus v1.8.7 luci-i18n-advancedplus-zh-cn-0.apk 48487e23e40b3b32acdad911caed71b3f7a858d39d308afa179aaa222c6c882e
+
+sirpdboy/luci-app-partexp v2.0.5 SNAPSHOT-x86_64.tar.gz bccf0e6c36ff771c7a67be7f89c67fb0a6bda686ba3d07e4c7fb2434a1e4ea16

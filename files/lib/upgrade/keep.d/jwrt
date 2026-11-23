@@ -1,0 +1,36 @@
+# jackwrt：刷机前备份（sysupgrade -b / jwrt-backup）额外包含的路径。
+# 放在 keep.d 而不是 /etc/sysupgrade.conf：keep.d 在只读的 rom 里，不会被备份，
+# 也不会被旧备份覆盖，所以新镜像改了这份清单，恢复后马上生效。
+# /etc/sysupgrade.conf 留给设备上临时追加。
+# 不存在的路径会被跳过（sysupgrade 用 find 收集，错误被忽略），所以没装的东西不用删。
+
+# 自定义脚本
+/usr/bin/wan
+/usr/bin/p2pwatch-snap
+/usr/bin/p2pwatch-report
+/usr/share/passwall/watchdog.sh
+/usr/share/passwall/rules/
+/etc/hotplug.d/iface/99-iptv-routes
+/etc/hotplug.d/iface/99-wan-tailscale
+/etc/hotplug.d/openvpn/
+/etc/sysctl.d/50-local.conf
+
+# 不归包管理的服务
+/opt/beszel-agent/
+/etc/init.d/beszel-agent
+
+# 密钥 / 状态（部分包自带 keep.d，这里重复写一遍兜底）
+/etc/easy-rsa/
+/etc/openvpn/
+/etc/tailscale/
+/etc/acme/
+/etc/ssl/acme/
+/etc/adguardhome/
+/etc/passwall/
+/etc/nftables.d/
+/etc/crontabs/
+/etc/rc.local
+
+# 数据
+/etc/nlbwmon-db/
+/root/

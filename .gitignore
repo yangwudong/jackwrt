@@ -12,5 +12,6 @@ backup*/
 *.key
 *.pem
 .env*
+/build.local.conf
 
 .DS_Store

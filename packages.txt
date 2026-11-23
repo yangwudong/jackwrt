@@ -1,0 +1,55 @@
+# 打进镜像的包（在 ImmortalWrt x86/64 默认包之外）。
+# 一行可写多个，# 后为注释；以 - 开头表示从默认包中去掉。
+
+# LuCI：nginx 作为 web 服务器（uhttpd 被 default-settings 间接依赖，构建时禁用其服务）
+luci-nginx
+luci-i18n-base-zh-cn luci-i18n-firewall-zh-cn luci-i18n-package-manager-zh-cn
+luci-theme-argon
+
+# 三方包（third-party.txt）
+luci-theme-vantage luci-i18n-vantage-theme-zh-cn
+luci-app-vantage luci-i18n-vantage-zh-cn
+luci-app-advancedplus luci-i18n-advancedplus-zh-cn
+luci-app-partexp luci-i18n-partexp-zh-cn
+
+# 代理
+luci-app-passwall luci-i18n-passwall-zh-cn xray-core sing-box hysteria
+
+# DNS
+adguardhome luci-app-adguardhome
+
+# 远程访问
+openvpn-openssl openvpn-easy-rsa luci-app-openvpn luci-i18n-openvpn-zh-cn
+tailscale luci-app-tailscale-community luci-i18n-tailscale-community-zh-cn
+
+# IPTV
+rtp2httpd luci-app-rtp2httpd luci-i18n-rtp2httpd-zh-cn
+igmpproxy
+
+# DDNS / 证书
+ddns-scripts-cloudflare luci-app-ddns luci-i18n-ddns-zh-cn
+acme-acmesh acme-acmesh-dnsapi luci-app-acme luci-i18n-acme-zh-cn
+
+# 其他服务
+luci-app-upnp luci-i18n-upnp-zh-cn
+luci-app-nlbwmon luci-i18n-nlbwmon-zh-cn
+luci-app-statistics luci-i18n-statistics-zh-cn
+collectd-mod-cpu collectd-mod-interface collectd-mod-load collectd-mod-memory collectd-mod-rrdtool
+luci-app-ttyd luci-i18n-ttyd-zh-cn
+luci-app-vlmcsd luci-i18n-vlmcsd-zh-cn
+luci-app-wechatpush luci-i18n-wechatpush-zh-cn
+luci-app-diskman luci-i18n-diskman-zh-cn
+luci-app-filemanager luci-i18n-filemanager-zh-cn
+
+# 加速（替代 turboacc：firewall4 自带软件流量卸载 + fullcone）
+kmod-nft-fullcone kmod-tcp-bbr
+
+# 存储（sda3 数据分区、jwrt-backup 记录分区表）
+block-mount e2fsprogs f2fs-tools sfdisk lsblk
+kmod-fs-vfat kmod-fs-exfat kmod-fs-ntfs3
+
+# 工具
+bash curl wget-ssl ca-bundle coreutils-timeout jq nano
+htop btop iperf3 tcpdump telnet-bsd ethtool unzip ffmpeg
+openssh-sftp-server
+lm-sensors pciutils usbutils smartmontools zram-swap

@@ -1,0 +1,29 @@
+#!/bin/sh
+# 干净刷机后，从数据分区的备份恢复配置，然后重启。
+# 用法：jwrt-restore [备份目录或 backup.tar.gz]   默认取 /mnt/data/backup 下最新的一份
+# 数据分区上也有一份副本：sh /mnt/data/restore.sh
+set -eu
+
+SRC=${1:-}
+if [ -z "$SRC" ]; then
+	SRC=$(ls -1d /mnt/data/backup/[0-9]*-[0-9]* 2>/dev/null | sort -r | head -n 1)
+	[ -n "$SRC" ] || { echo "/mnt/data/backup 下没有备份（数据分区挂上了吗？）" >&2; exit 1; }
+fi
+[ -d "$SRC" ] && SRC=$SRC/backup.tar.gz
+[ -f "$SRC" ] || { echo "找不到 $SRC" >&2; exit 1; }
+
+echo "备份：$SRC"
+tar -tzf "$SRC" > /dev/null
+[ -f "$(dirname "$SRC")/jwrt-release" ] && sed 's/^/  备份时 /' "$(dirname "$SRC")/jwrt-release"
+sed 's/^/  当前   /' /etc/jwrt-release 2>/dev/null || true
+
+if [ -t 0 ] && [ "${JWRT_YES:-}" != 1 ]; then
+	printf '恢复并重启？[y/N] '
+	read -r ans
+	case $ans in y | Y) ;; *) echo "已取消"; exit 1 ;; esac
+fi
+
+sysupgrade -r "$SRC"
+sync
+echo "已恢复，重启中..."
+reboot

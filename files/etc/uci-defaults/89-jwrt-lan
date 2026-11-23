@@ -1,0 +1,50 @@
+#!/bin/sh
+# 首次启动：设置 LAN 地址/主机名，让刷完的路由器直接回到原来的地址（不用先连 192.168.1.1）。
+# 来源（后者优先）：
+#   /etc/jwrt-lan.conf              构建时由 build.local.conf 写入（公开构建里没有）
+#   数据分区（label=data）/jwrt-lan.conf  jwrt-backup 每次备份时写入
+# 都没有就保持 ImmortalWrt 默认。之后 jwrt-restore 会用备份里的完整配置覆盖。
+
+IPADDR=
+NETMASK=
+HOST=
+
+load() {
+	[ -f "$1" ] || return 0
+	v=$(sed -n 's/^LAN_IPADDR=//p' "$1" | head -n 1)
+	echo "$v" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/[0-9]{1,2})?$' && IPADDR=$v
+	v=$(sed -n 's/^LAN_NETMASK=//p' "$1" | head -n 1)
+	echo "$v" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' && NETMASK=$v
+	v=$(sed -n 's/^HOSTNAME=//p' "$1" | head -n 1)
+	echo "$v" | grep -qE '^[A-Za-z0-9][A-Za-z0-9-]{0,62}$' && HOST=$v
+	return 0
+}
+
+load /etc/jwrt-lan.conf
+
+# 这时 fstab 还没挂载，临时只读挂一下数据分区
+dev=$(block info 2> /dev/null | sed -n 's/^\(\/dev\/[^:]*\):.* LABEL="data".*/\1/p' | head -n 1)
+if [ -n "$dev" ]; then
+	mnt=/tmp/jwrt-lan.mnt
+	mkdir -p "$mnt"
+	if mount -o ro "$dev" "$mnt" 2> /dev/null; then
+		load "$mnt/jwrt-lan.conf"
+		umount "$mnt"
+	fi
+	rmdir "$mnt" 2> /dev/null
+fi
+
+if [ -n "$IPADDR" ]; then
+	uci set network.lan.ipaddr="$IPADDR"
+	case $IPADDR in
+	*/*) uci -q delete network.lan.netmask ;;
+	*) [ -n "$NETMASK" ] && uci set network.lan.netmask="$NETMASK" ;;
+	esac
+	uci commit network
+fi
+if [ -n "$HOST" ]; then
+	uci set system.@system[0].hostname="$HOST"
+	uci commit system
+fi
+
+exit 0
