@@ -1,14 +1,24 @@
-# 三方包：直接下载作者 GitHub Release 的产物，按 sha256 校验后放进 ImageBuilder 的 packages/。
-# 格式：<owner/repo> <tag> <asset> <sha256>
-# asset 为 .apk 时直接使用；为 .tar.gz 时取出其中所有 .apk。
-# 升级：改 tag/asset，并用 `gh release view <tag> -R <repo> --json assets` 里的 digest 更新 sha256。
+# 三方包：从作者的 GitHub 仓库下载，按 sha256 校验后加进镜像。
+# 格式：<类型> <owner/repo> <tag 或 commit> <文件> <sha256> [tar 内路径 镜像内路径]
+#   apk      Release 附件，是 .apk           → ImageBuilder packages/（参与依赖解析）
+#   apk-tar  Release 附件，是含 .apk 的 tar.gz → 取出所有 .apk 放进 packages/
+#   apk-git  仓库里提交的 .apk（固定 commit）  → packages/
+#   bin-tar  Release 附件，是 tar.gz           → 取出指定文件放进镜像（不归 apk 管理）
+# 升级：改 tag/commit/文件名，sha256 用 `gh release view <tag> -R <repo> --json assets` 里的 digest，
+# 或下载后 `sha256sum`。
 
-anothaDev/luci-theme-vantage v1.1.1 luci-theme-vantage-1.1.1-r1.apk 41aa9bc046fefd47125d82adf56caad464ab1af41ef5d143be6ba8fafa80bd70
-anothaDev/luci-theme-vantage v1.1.1 luci-i18n-vantage-theme-zh-cn-1.1.1-r1.apk d5c7dfc160d8097f90bc0cc0566ab3d27b6f66313159b9446129bc53d97b2bc4
-anothaDev/luci-theme-vantage v1.1.1 luci-app-vantage-1.1.1-r1.apk c77136696b87a4f97c7dc55aeb0fee14c3de1815c120a69d67a124be7a22d4df
-anothaDev/luci-theme-vantage v1.1.1 luci-i18n-vantage-zh-cn-1.1.1-r1.apk 3a803dd6bcd0ba57b2c85593201f4022f8b19e4441d49ad981908895f9811c28
+apk anothaDev/luci-theme-vantage v1.1.1 luci-theme-vantage-1.1.1-r1.apk 41aa9bc046fefd47125d82adf56caad464ab1af41ef5d143be6ba8fafa80bd70
+apk anothaDev/luci-theme-vantage v1.1.1 luci-i18n-vantage-theme-zh-cn-1.1.1-r1.apk d5c7dfc160d8097f90bc0cc0566ab3d27b6f66313159b9446129bc53d97b2bc4
+apk anothaDev/luci-theme-vantage v1.1.1 luci-app-vantage-1.1.1-r1.apk c77136696b87a4f97c7dc55aeb0fee14c3de1815c120a69d67a124be7a22d4df
+apk anothaDev/luci-theme-vantage v1.1.1 luci-i18n-vantage-zh-cn-1.1.1-r1.apk 3a803dd6bcd0ba57b2c85593201f4022f8b19e4441d49ad981908895f9811c28
 
-sirpdboy/luci-app-advancedplus v1.8.7 luci-app-advancedplus-1.8.7-r20251116.apk 23a22f421e3f36a8278286044ec6ca5d44a7a42620a095d9c0e6081e8b13f7a3
-sirpdboy/luci-app-advancedplus v1.8.7 luci-i18n-advancedplus-zh-cn-0.apk 48487e23e40b3b32acdad911caed71b3f7a858d39d308afa179aaa222c6c882e
+apk sirpdboy/luci-app-advancedplus v1.8.7 luci-app-advancedplus-1.8.7-r20251116.apk 23a22f421e3f36a8278286044ec6ca5d44a7a42620a095d9c0e6081e8b13f7a3
+apk sirpdboy/luci-app-advancedplus v1.8.7 luci-i18n-advancedplus-zh-cn-0.apk 48487e23e40b3b32acdad911caed71b3f7a858d39d308afa179aaa222c6c882e
 
-sirpdboy/luci-app-partexp v2.0.5 SNAPSHOT-x86_64.tar.gz bccf0e6c36ff771c7a67be7f89c67fb0a6bda686ba3d07e4c7fb2434a1e4ea16
+apk-tar sirpdboy/luci-app-partexp v2.0.5 SNAPSHOT-x86_64.tar.gz bccf0e6c36ff771c7a67be7f89c67fb0a6bda686ba3d07e4c7fb2434a1e4ea16
+
+# log-viewer：作者没有 Release，编好的包按 OpenWrt 版本放在 packages-openwrt 仓库
+apk-git gSpotx2f/packages-openwrt 5443ab6f829e0b87faa35f6416623a642e1838c8 25.12/luci-app-log-viewer-1.5.0-r5.apk ba1311fe91445c85d9d29296105864c0734a11a8adf650f9a4c7bd27f0b98d86
+
+# fastfetch：官方 musl 版，只依赖 libc
+bin-tar fastfetch-cli/fastfetch 2.71.0 fastfetch-musl-amd64.tar.gz 8182deaeb2d3c42ecf043a5b6ad9da274d26edba051f1a5d59c217db39a13639 fastfetch-musl-amd64/usr/bin/fastfetch /usr/bin/fastfetch

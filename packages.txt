@@ -11,6 +11,8 @@ luci-theme-vantage luci-i18n-vantage-theme-zh-cn
 luci-app-vantage luci-i18n-vantage-zh-cn
 luci-app-advancedplus luci-i18n-advancedplus-zh-cn
 luci-app-partexp luci-i18n-partexp-zh-cn
+luci-app-log-viewer
+# fastfetch 是二进制，直接放进镜像，不在这里（见 third-party.txt）
 
 # 代理
 luci-app-passwall luci-i18n-passwall-zh-cn xray-core sing-box hysteria

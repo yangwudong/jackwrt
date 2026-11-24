@@ -3,17 +3,17 @@
 个人用的 x86_64 固件。基于 [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 官方 ImageBuilder，在 GitHub Actions 上打包，不从源码编译。
 
 - 基础系统和大部分插件：ImmortalWrt 官方源
-- 少量三方 luci 包：直接用原作者 GitHub Release 发布的 apk（`third-party.txt`，固定 tag + sha256）
+- 少量三方包：直接用原作者 GitHub 上发布的 apk 或二进制（`third-party.txt`，固定 tag/commit + sha256）
 - 镜像：UEFI `squashfs-combined-efi.img.gz`，rootfs 固定 8192 MB（`ROOTFS_PARTSIZE`）
 - 产物发布在 GitHub Releases
 
 ## 结构
 
 ```
-build.conf                    ImmortalWrt 版本、profile、ROOTFS_PARTSIZE、首次启动 LAN/主机名（默认留空）
+build.conf                    ImmortalWrt 版本、IB sha256、下载镜像、ROOTFS_PARTSIZE、首次启动 LAN/主机名（默认留空）
 build.local.conf              （可选，gitignore）本地私有覆盖
 packages.txt                  包清单
-third-party.txt               三方 apk 来源（仓库 + tag + 文件 + sha256）
+third-party.txt               三方来源（类型 + 仓库 + tag/commit + 文件 + sha256）
 .github/workflows/build.yml   手动触发：scripts/build.sh → Release
 scripts/build.sh              下载 IB → 放入三方 apk → make image（本地 amd64 Linux 也能跑）
 scripts/init-disk.sh          新盘首次装机：整盘写入 + 建数据分区（label=data）
@@ -61,6 +61,8 @@ jwrt-restore                               # 恢复最新备份并重启
 **系统起不来**：U 盘启动任意 Linux，`scripts/flash-p1p2.sh <img.gz> /dev/sdX`，开机后 `sh /mnt/data/restore.sh`。
 
 **改包 / 升级三方包**：改 `packages.txt` 或 `third-party.txt`（sha256 用 `gh release view <tag> -R <repo> --json assets` 里的 digest），重跑 workflow。
+
+**官方站挂了**：运行 workflow 时在 `mirror` 填一个镜像站（如 `https://mirrors.cernet.edu.cn/immortalwrt`），或者改 `build.conf` 的 `MIRROR`。ImageBuilder 用 `build.conf` 里固定的 sha256 校验，软件源索引有 ImmortalWrt 签名，换镜像站不影响安全性。
 
 ## 约定
 

@@ -7,6 +7,10 @@ on:
         description: 发布到 GitHub Releases（否则只上传为 Actions artifact）
         type: boolean
         default: true
+      mirror:
+        description: ImmortalWrt 下载源（留空用 build.conf / 官方站），如 https://mirrors.cernet.edu.cn/immortalwrt
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -37,6 +41,8 @@ jobs:
             xsltproc rsync unzip python3 python3-setuptools file zstd
 
       - name: 构建
+        env:
+          JWRT_MIRROR: ${{ inputs.mirror }}
         run: scripts/build.sh
 
       - name: 版本号
@@ -54,7 +60,7 @@ jobs:
             echo
             echo '三方包：'
             echo '```'
-            grep -vE '^\s*(#|$)' third-party.txt | awk '{ print $1, $2, $3 }'
+            grep -vE '^\s*(#|$)' third-party.txt | awk '{ print $2, $3, $4 }'
             echo '```'
           } > build/notes.md
 

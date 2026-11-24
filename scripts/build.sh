@@ -17,7 +17,12 @@ DL=$WORK/dl
 IB=$WORK/ib
 OUT=$WORK/out
 
-BASE_URL=https://downloads.immortalwrt.org/releases/$IMMORTALWRT_VERSION/targets/$TARGET
+# 下载源：环境变量 JWRT_MIRROR（workflow 输入）> build.conf 的 MIRROR > 官方站
+OFFICIAL=https://downloads.immortalwrt.org
+MIRROR=${JWRT_MIRROR:-${MIRROR:-}}
+MIRROR=${MIRROR:-$OFFICIAL}
+MIRROR=${MIRROR%/}
+BASE_URL=$MIRROR/releases/$IMMORTALWRT_VERSION/targets/$TARGET
 IB_TAR=immortalwrt-imagebuilder-$IMMORTALWRT_VERSION-${TARGET//\//-}.Linux-x86_64.tar.zst
 
 log() { printf '\n==> %s\n' "$*"; }
@@ -34,15 +39,19 @@ fetch() {
 	mv "$dest.part" "$dest"
 }
 
-log "ImageBuilder $IMMORTALWRT_VERSION"
+log "ImageBuilder $IMMORTALWRT_VERSION（$MIRROR）"
 mkdir -p "$DL"
-curl -fsSL --retry 5 -o "$DL/sha256sums" "$BASE_URL/sha256sums"
-ib_sum=$(awk -v f="*$IB_TAR" '$2 == f { print $1 }' "$DL/sha256sums")
-[ -n "$ib_sum" ] || { echo "sha256sums 里没有 $IB_TAR" >&2; exit 1; }
-fetch "$DL/$IB_TAR" "$ib_sum" "$BASE_URL/$IB_TAR"
+[ -n "${IMAGEBUILDER_SHA256:-}" ] || { echo "build.conf 里没有 IMAGEBUILDER_SHA256" >&2; exit 1; }
+fetch "$DL/$IB_TAR" "$IMAGEBUILDER_SHA256" "$BASE_URL/$IB_TAR"
 rm -rf "$IB" "$OUT"
 mkdir -p "$IB" "$OUT"
 tar --zstd -xf "$DL/$IB_TAR" -C "$IB" --strip-components=1
+
+# 软件源也走同一个下载源。索引有 ImmortalWrt 签名（CONFIG_SIGNATURE_CHECK=y），镜像站篡改不了
+if [ "$MIRROR" != "$OFFICIAL" ]; then
+	sed -i "s,$OFFICIAL,$MIRROR,g" "$IB/repositories"
+	grep -q "$MIRROR" "$IB/repositories" || { echo "替换 repositories 失败" >&2; exit 1; }
+fi
 
 # 只要 squashfs + UEFI combined：8G 分区下，每多一种格式就多一个 8G 文件
 sed -i -E \
@@ -54,21 +63,31 @@ sed -i -E 's/^(\s*IMAGES-y := )rootfs\.img(\.gz)?$/\1/' "$IB/target/linux/x86/im
 grep -qE '^\s*IMAGES-y := rootfs' "$IB/target/linux/x86/image/Makefile" && { echo "去掉 rootfs.img 失败" >&2; exit 1; }
 
 log "三方包"
-grep -vE '^\s*(#|$)' "$ROOT/third-party.txt" | while read -r repo tag asset sum; do
-	f=$DL/third-party/${repo//\//_}/$tag/$asset
-	fetch "$f" "$sum" "https://github.com/$repo/releases/download/$tag/$asset"
-	case $asset in
-	*.apk) cp "$f" "$IB/packages/" ;;
-	*.tar.gz) tar -xzf "$f" -C "$IB/packages/" --wildcards --no-anchored --transform='s,.*/,,' '*.apk' ;;
-	*) echo "不支持的格式：$asset" >&2; exit 1 ;;
-	esac
-	echo "$repo $tag $asset"
-done
-
-log "files/"
 FILES=$WORK/files
 rm -rf "$FILES"
 cp -a "$ROOT/files" "$FILES"
+grep -vE '^\s*(#|$)' "$ROOT/third-party.txt" | while read -r kind repo ref file sum member dest; do
+	f=$DL/third-party/${repo//\//_}/$ref/$(basename "$file")
+	case $kind in
+	apk-git) url=https://raw.githubusercontent.com/$repo/$ref/$file ;;
+	apk | apk-tar | bin-tar) url=https://github.com/$repo/releases/download/$ref/$file ;;
+	*) echo "third-party.txt：未知类型 $kind" >&2; exit 1 ;;
+	esac
+	fetch "$f" "$sum" "$url"
+	case $kind in
+	apk | apk-git) cp "$f" "$IB/packages/" ;;
+	apk-tar) tar -xzf "$f" -C "$IB/packages/" --wildcards --no-anchored --transform='s,.*/,,' '*.apk' ;;
+	bin-tar)
+		[ -n "$member" ] && [ -n "$dest" ] || { echo "third-party.txt：bin-tar 需要 tar 内路径和镜像内路径" >&2; exit 1; }
+		mkdir -p "$FILES$(dirname "$dest")"
+		tar -xzf "$f" -O "$member" > "$FILES$dest"
+		chmod 755 "$FILES$dest"
+		;;
+	esac
+	echo "$kind $repo $ref $file"
+done
+
+log "files/"
 rev=$(git -C "$ROOT" describe --always --dirty 2>/dev/null || echo unknown)
 cat > "$FILES/etc/jwrt-release" <<EOF
 JWRT_IMMORTALWRT=$IMMORTALWRT_VERSION
