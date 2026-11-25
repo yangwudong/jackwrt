@@ -16,6 +16,8 @@ luci-app-log-viewer
 
 # 代理
 luci-app-passwall luci-i18n-passwall-zh-cn xray-core sing-box hysteria
+# passwall 的分流规则用 geosite:/geoip:，数据文件打进镜像（passwall 自带的更新会写到 overlay）
+v2ray-geoip v2ray-geosite
 
 # DNS
 adguardhome luci-app-adguardhome

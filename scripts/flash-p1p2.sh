@@ -48,9 +48,13 @@ printf '\n将覆盖 %s 的 p1、p2，其它分区不动。输入 YES 继续：' 
 read -r ans
 [ "$ans" = YES ] || { echo "已取消"; exit 1; }
 
+# busybox dd 不支持 status=progress
+DDP=
+dd if=/dev/zero of=/dev/null count=0 status=progress 2> /dev/null && DDP=status=progress
+
 while read -r n start size uuid; do
 	echo "写 p$n..."
-	dd if="$RAW" of="$DISK" bs=512 skip="$start" seek="$start" count="$size" conv=notrunc,fsync status=progress
+	dd if="$RAW" of="$DISK" bs=512 skip="$start" seek="$start" count="$size" conv=notrunc,fsync $DDP
 	# grub.cfg 里的 root=PARTUUID= 指向镜像的 p2，让磁盘分区 UUID 跟镜像一致
 	sfdisk --part-uuid "$DISK" "$n" "$uuid"
 done < "$TMP/image.map"

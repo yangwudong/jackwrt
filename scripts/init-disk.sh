@@ -20,14 +20,17 @@ read -r ans
 [ "$ans" = YES ] || { echo "已取消"; exit 1; }
 
 echo "写入镜像..."
+# busybox dd 不支持 status=progress
+DDP=
+dd if=/dev/zero of=/dev/null count=0 status=progress 2> /dev/null && DDP=status=progress
 case $IMG in
 *.gz)
 	# img.gz 末尾附带 metadata，gzip 会报 trailing garbage（退出码 2），可忽略
 	rc=0
-	gzip -dc "$IMG" 2> /dev/null | dd of="$DISK" bs=4M conv=fsync status=progress || rc=$?
+	gzip -dc "$IMG" 2> /dev/null | dd of="$DISK" bs=4M conv=fsync $DDP || rc=$?
 	[ $rc -eq 0 ] || [ $rc -eq 2 ] || exit $rc
 	;;
-*) dd if="$IMG" of="$DISK" bs=4M conv=fsync status=progress ;;
+*) dd if="$IMG" of="$DISK" bs=4M conv=fsync $DDP ;;
 esac
 sync
 blockdev --rereadpt "$DISK" 2> /dev/null || partprobe "$DISK" 2> /dev/null || true
